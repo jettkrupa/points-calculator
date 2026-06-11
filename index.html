@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Qantas & Velocity Points Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red: #E8001D;
+    --red-dark: #B5001A;
+    --red-glow: rgba(232,0,29,0.15);
+    --gold: #C9973A;
+    --gold-light: #F0C76A;
+    --bg: #0A0A0B;
+    --bg2: #111114;
+    --bg3: #18181C;
+    --panel: #1C1C21;
+    --border: rgba(255,255,255,0.07);
+    --border-active: rgba(232,0,29,0.4);
+    --text: #F2F2F4;
+    --muted: #888896;
+    --positive: #2ECC71;
+    --positive-bg: rgba(46,204,113,0.08);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Background texture ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 80% 10%, rgba(232,0,29,0.07) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 60% at 10% 90%, rgba(201,151,58,0.05) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Grid lines ── */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding: 0 24px 80px; }
+
+  /* ── Header ── */
+  header {
+    padding: 48px 0 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .logo-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 8px;
+  }
+
+  .logo-icon {
+    width: 44px; height: 44px;
+    background: var(--red);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    box-shadow: 0 0 24px var(--red-glow), 0 2px 8px rgba(0,0,0,0.4);
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(28px, 5vw, 42px);
+    font-weight: 800;
+    letter-spacing: -1px;
+    line-height: 1.05;
+  }
+
+  h1 span { color: var(--red); }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 300;
+    letter-spacing: 0.01em;
+  }
+
+  /* ── Tab switcher ── */
+  .tabs {
+    display: flex;
+    gap: 6px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 6px;
+    margin-bottom: 32px;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 12px 20px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 10px;
+    transition: all 0.22s ease;
+    letter-spacing: 0.02em;
+  }
+
+  .tab:hover { color: var(--text); background: var(--bg3); }
+
+  .tab.active {
+    background: var(--red);
+    color: #fff;
+    box-shadow: 0 2px 16px var(--red-glow);
+  }
+
+  /* ── Page panels ── */
+  .page { display: none; }
+  .page.active { display: block; animation: fadeUp 0.3s ease; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Section label ── */
+  .section-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    color: var(--red);
+    text-transform: uppercase;
+    margin-bottom: 18px;
+  }
+
+  /* ── Card ── */
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 28px 28px;
+    margin-bottom: 16px;
+    transition: border-color 0.2s;
+  }
+
+  .card:hover { border-color: rgba(255,255,255,0.12); }
+
+  .card-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .card-title .icon {
+    width: 30px; height: 30px;
+    background: var(--bg3);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    border: 1px solid var(--border);
+  }
+
+  /* ── Form grid ── */
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  .form-grid.cols-1 { grid-template-columns: 1fr; }
+  .form-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+  @media (max-width: 580px) {
+    .form-grid, .form-grid.cols-3 { grid-template-columns: 1fr; }
+  }
+
+  .field { display: flex; flex-direction: column; gap: 7px; }
+  .field.span2 { grid-column: span 2; }
+  @media (max-width: 580px) { .field.span2 { grid-column: span 1; } }
+
+  label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.03em;
+  }
+
+  .input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .prefix {
+    position: absolute;
+    left: 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--muted);
+    pointer-events: none;
+  }
+
+  .suffix {
+    position: absolute;
+    right: 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  input[type="number"], input[type="text"], select {
+    width: 100%;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    padding: 12px 14px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    -moz-appearance: textfield;
+  }
+
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+  input.has-prefix { padding-left: 28px; }
+  input.has-suffix { padding-right: 60px; }
+
+  input:focus, select:focus {
+    border-color: var(--red);
+    box-shadow: 0 0 0 3px var(--red-glow);
+  }
+
+  select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888896' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 36px;
+  }
+
+  select option { background: var(--bg2); }
+
+  /* ── Hint text ── */
+  .hint {
+    font-size: 11px;
+    color: var(--muted);
+    opacity: 0.7;
+    font-style: italic;
+  }
+
+  /* ── Calculate button ── */
+  .calc-btn {
+    width: 100%;
+    margin-top: 8px;
+    padding: 16px;
+    background: var(--red);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 20px rgba(232,0,29,0.3);
+  }
+
+  .calc-btn:hover {
+    background: var(--red-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 28px rgba(232,0,29,0.4);
+  }
+
+  .calc-btn:active { transform: translateY(0); }
+
+  /* ── Results panel ── */
+  .results {
+    background: var(--bg2);
+    border: 1px solid var(--border-active);
+    border-radius: 18px;
+    padding: 28px;
+    margin-top: 16px;
+    display: none;
+    animation: fadeUp 0.35s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .results::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--red), var(--gold));
+  }
+
+  .results.show { display: block; }
+
+  .results-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 20px;
+  }
+
+  .metrics-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .metric {
+    background: var(--panel);
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid var(--border);
+  }
+
+  .metric-label {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .metric-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+
+  .metric-value.red { color: var(--red); }
+  .metric-value.gold { color: var(--gold-light); }
+  .metric-value.green { color: var(--positive); }
+
+  .verdict {
+    background: var(--positive-bg);
+    border: 1px solid rgba(46,204,113,0.2);
+    border-radius: 12px;
+    padding: 18px 20px;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+  }
+
+  .verdict.bad {
+    background: rgba(232,0,29,0.06);
+    border-color: rgba(232,0,29,0.2);
+  }
+
+  .verdict-icon { font-size: 22px; flex-shrink: 0; margin-top: 1px; }
+
+  .verdict-body { flex: 1; }
+
+  .verdict-headline {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  .verdict-body.good .verdict-headline { color: var(--positive); }
+  .verdict-body.bad .verdict-headline { color: var(--red); }
+
+  .verdict-text {
+    font-size: 13.5px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .verdict-text strong { color: var(--text); font-weight: 500; }
+
+  /* ── Divider ── */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 20px 0;
+  }
+
+  /* ── Breakeven line ── */
+  .breakeven {
+    font-size: 13px;
+    color: var(--muted);
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .breakeven span { color: var(--gold-light); font-family: 'DM Mono', monospace; font-size: 13px; }
+
+  /* ── Toggle checkbox for insurance ── */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .toggle-row input[type="checkbox"] {
+    width: 18px; height: 18px;
+    accent-color: var(--red);
+    cursor: pointer;
+  }
+
+  .toggle-row label {
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text);
+  }
+
+  /* ── Footer note ── */
+  .footer-note {
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    opacity: 0.6;
+    margin-top: 40px;
+    line-height: 1.7;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="logo-row">
+      <div class="logo-icon">✈</div>
+      <div>
+        <h1>Qantas & Velocity <span>Points</span> Calculator</h1>
+      </div>
+    </div>
+    <p class="subtitle">Is that Qantas or Velocity points offer actually worth it? Find out in seconds.</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('cc')">💳 &nbsp;Credit Card Offers</button>
+    <button class="tab" onclick="switchTab('hi')">🏥 &nbsp;Health Insurance Offers</button>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       CREDIT CARD PAGE
+  ══════════════════════════════════════════ -->
+  <div class="page active" id="page-cc">
+
+    <div class="section-label">// Credit Card Offer Analysis</div>
+
+    <!-- Offer details -->
+    <div class="card">
+      <div class="card-title"><div class="icon">🎁</div> Bonus Offer Details</div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Annual Fee</label>
+          <div class="input-wrap">
+            <span class="prefix">$</span>
+            <input type="number" id="cc-fee" class="has-prefix" placeholder="0" min="0" oninput="ccCalc()">
+          </div>
+        </div>
+        <div class="field">
+          <label>Bonus Points Offered</label>
+          <div class="input-wrap">
+            <input type="number" id="cc-bonus" placeholder="e.g. 150000" min="0" oninput="ccCalc()">
+          </div>
+        </div>
+        <div class="field">
+          <label>Min. Spend to Unlock Bonus</label>
+          <div class="input-wrap">
+            <span class="prefix">$</span>
+            <input type="number" id="cc-minspend" class="has-prefix" placeholder="e.g. 3000" min="0" oninput="ccCalc()">
+          </div>
+        </div>
+        <div class="field">
+          <label>Spend Period</label>
+          <div class="input-wrap">
+            <select id="cc-period" onchange="ccCalc()">
+              <option value="60">60 days</option>
+              <option value="90" selected>90 days</option>
+              <option value="120">120 days</option>
+              <option value="180">180 days</option>
+              <option value="365">365 days (1 year)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Earn rate -->
+    <div class="card">
+      <div class="card-title"><div class="icon">📈</div> Card Earn Rate & Spending</div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Points Earned per $1 Spent</label>
+          <div class="input-wrap">
+            <input type="number" id="cc-earnrate" placeholder="e.g. 1.0" min="0" step="0.1" oninput="ccCalc()">
+            <span class="suffix">pts / $1</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>Your Expected Annual Spend</label>
+          <div class="input-wrap">
+            <span class="prefix">$</span>
+            <input type="number" id="cc-annualspend" class="has-prefix" placeholder="e.g. 24000" min="0" oninput="ccCalc()">
+          </div>
+        </div>
+        <div class="field span2">
+          <p class="hint">Assumed: no surcharges (card used only at 0% surcharge merchants). Points valued at 1c/pt baseline (Velocity redemption floor).</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div class="results" id="cc-results">
+      <div class="results-title">📊 Bonus Offer Analysis</div>
+      <div class="metrics-row">
+        <div class="metric">
+          <div class="metric-label">Annual Fee (Your Cost)</div>
+          <div class="metric-value red" id="cc-r-cost">—</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Bonus Points</div>
+          <div class="metric-value gold" id="cc-r-pts">—</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Bonus Value @ 1c/pt</div>
+          <div class="metric-value gold" id="cc-r-ptval">—</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Net Saving on Bonus</div>
+          <div class="metric-value green" id="cc-r-net">—</div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="breakeven" id="cc-r-breakeven"></div>
+      <div class="divider"></div>
+
+      <div class="verdict" id="cc-verdict">
+        <div class="verdict-icon" id="cc-vicon">✅</div>
+        <div class="verdict-body" id="cc-vbody">
+          <div class="verdict-headline" id="cc-vhead"></div>
+          <div class="verdict-text" id="cc-vtext"></div>
+        </div>
+      </div>
+
+      <!-- Ongoing earn rate section — only shown when earn rate + annual spend are filled -->
+      <div id="cc-earn-section" style="display:none;">
+        <div class="divider" style="margin-top:24px;"></div>
+        <div class="results-title" style="margin-top:20px;">📈 If You Keep the Card Open — Ongoing Earn Rate</div>
+        <p style="font-size:13px; color:var(--muted); margin-bottom:16px; line-height:1.6;">
+          The annual fee is already a sunk cost from chasing the bonus. If you keep the card open and continue spending,
+          here's the additional value your earn rate generates — and how it improves your effective cost per point on the bonus.
+        </p>
+        <div class="metrics-row">
+          <div class="metric">
+            <div class="metric-label">Pts from Annual Spend</div>
+            <div class="metric-value gold" id="cc-r-earnpts">—</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Earn Value @ 1c/pt</div>
+            <div class="metric-value gold" id="cc-r-earnval">—</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Total Points (Bonus + Earn)</div>
+            <div class="metric-value gold" id="cc-r-totalpts">—</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Effective Cost/pt (Bonus)</div>
+            <div class="metric-value green" id="cc-r-cpp">—</div>
+          </div>
+        </div>
+        <div class="verdict" style="margin-top:4px;" id="cc-earn-verdict">
+          <div class="verdict-icon">💡</div>
+          <div class="verdict-body good">
+            <div class="verdict-headline" style="color:var(--gold-light);" id="cc-earn-vtext"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /page-cc -->
+
+
+  <!-- ══════════════════════════════════════════
+       HEALTH INSURANCE PAGE
+  ══════════════════════════════════════════ -->
+  <div class="page" id="page-hi">
+
+    <div class="section-label">// Health Insurance Offer Analysis</div>
+
+    <div class="card">
+      <div class="card-title"><div class="icon">🎁</div> Offer Details</div>
+      <div class="form-grid">
+        <div class="field">
+          <label>Weekly Premium for This Policy</label>
+          <div class="input-wrap">
+            <span class="prefix">$</span>
+            <input type="number" id="hi-premium" class="has-prefix" placeholder="e.g. 170" min="0" step="0.01" oninput="hiCalc()">
+            <span class="suffix">/ week</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>Bonus Points Offered</label>
+          <div class="input-wrap">
+            <input type="number" id="hi-bonus" placeholder="e.g. 80000" min="0" oninput="hiCalc()">
+          </div>
+        </div>
+        <div class="field">
+          <label>Hold Period Required</label>
+          <div class="input-wrap">
+            <select id="hi-period" onchange="hiCalc()">
+              <option value="60">60 days</option>
+              <option value="90" selected>90 days</option>
+              <option value="120">120 days</option>
+              <option value="180">180 days</option>
+              <option value="365">365 days (1 year)</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label>Free Weeks Included in Offer</label>
+          <div class="input-wrap">
+            <input type="number" id="hi-freeweeks" placeholder="e.g. 6 (or 0)" min="0" step="1" oninput="hiCalc()">
+            <span class="suffix">weeks free</span>
+          </div>
+          <p class="hint">e.g. Medibank "6 weeks free" — these weeks are deducted from your billable premium.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="icon">🏠</div> Your Current Situation</div>
+      <div class="form-grid">
+        <div class="field span2">
+          <label>Do you currently pay for health insurance?</label>
+          <div class="toggle-row" onclick="toggleHI()">
+            <input type="checkbox" id="hi-hascurrent" onchange="hiCalc()">
+            <label for="hi-hascurrent">Yes, I already have health insurance</label>
+          </div>
+        </div>
+        <div class="field" id="hi-current-wrap" style="display:none;">
+          <label>Your Current Weekly Premium</label>
+          <div class="input-wrap">
+            <span class="prefix">$</span>
+            <input type="number" id="hi-current" class="has-prefix" placeholder="e.g. 50" min="0" step="0.01" oninput="hiCalc()">
+            <span class="suffix">/ week</span>
+          </div>
+        </div>
+        <div class="field">
+          <p class="hint" style="margin-top:8px;">If you already pay health insurance, only the <em>extra</em> cost above your current premium is counted as the real cost of chasing these points.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div class="results" id="hi-results">
+      <div class="results-title">📊 Offer Analysis</div>
+      <div class="metrics-row">
+        <div class="metric">
+          <div class="metric-label">Total Premium Paid</div>
+          <div class="metric-value red" id="hi-r-total">—</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Your Effective Cost</div>
+          <div class="metric-value red" id="hi-r-cost">—</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Bonus Points</div>
+          <div class="metric-value gold" id="hi-r-pts">—</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Points Value @ 1c/pt</div>
+          <div class="metric-value gold" id="hi-r-ptval">—</div>
+        </div>
+      </div>
+
+      <div class="metrics-row" style="grid-template-columns:1fr 1fr;">
+        <div class="metric">
+          <div class="metric-label">Weekly Extra Cost</div>
+          <div class="metric-value red" id="hi-r-weekly">—</div>
+        </div>
+        <div class="metric" id="hi-r-freeweeks-block" style="display:none;">
+          <div class="metric-label">Saved via Free Weeks</div>
+          <div class="metric-value green" id="hi-r-freesaved">—</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Net Value / Savings</div>
+          <div class="metric-value green" id="hi-r-net">—</div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="breakeven" id="hi-r-breakeven"></div>
+      <div class="divider"></div>
+
+      <div class="verdict" id="hi-verdict">
+        <div class="verdict-icon" id="hi-vicon">✅</div>
+        <div class="verdict-body" id="hi-vbody">
+          <div class="verdict-headline" id="hi-vhead"></div>
+          <div class="verdict-text" id="hi-vtext"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /page-hi -->
+
+  <p class="footer-note">
+    Points valued at the conservative Qantas/Velocity baseline of 1 cent per point.<br>
+    This calculator is designed for Qantas Points and Velocity Points only — Amex Membership Rewards and other transferable currencies have different effective values.<br>
+    Premium redemptions (Business/First class) can yield 2–5c/pt — this calculator shows your <em>minimum</em> value.<br>
+    Not financial advice. Always read the full PDS and offer T&Cs.
+  </p>
+
+</div><!-- /wrap -->
+
+<script>
+  /* ── Utils ── */
+  const fmt = (n) => n < 0
+    ? '-$' + Math.abs(n).toLocaleString('en-AU', {minimumFractionDigits:0,maximumFractionDigits:0})
+    : '$' + n.toLocaleString('en-AU', {minimumFractionDigits:0,maximumFractionDigits:0});
+
+  const fmtPts = (n) => n >= 1000
+    ? (n/1000).toFixed(n % 1000 === 0 ? 0 : 1) + 'k pts'
+    : n.toLocaleString() + ' pts';
+
+  const v = (id) => parseFloat(document.getElementById(id).value) || 0;
+
+  /* ── Tab switcher ── */
+  function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + tab).classList.add('active');
+    event.target.classList.add('active');
+  }
+
+  /* ── Credit Card Calc ── */
+  function ccCalc() {
+    const fee = v('cc-fee');
+    const bonus = v('cc-bonus');
+    const minSpend = v('cc-minspend');
+    const period = parseInt(document.getElementById('cc-period').value);
+    const earnRate = v('cc-earnrate');
+    const annualSpend = v('cc-annualspend');
+
+    if (fee === 0 && bonus === 0) return;
+
+    // ── Bonus-only analysis (the churn case) ──
+    const bonusPtsValue = bonus * 0.01;
+    const totalCost = fee;
+    const net = bonusPtsValue - totalCost;
+
+    document.getElementById('cc-r-cost').textContent = fmt(totalCost);
+    document.getElementById('cc-r-pts').textContent = fmtPts(bonus);
+    document.getElementById('cc-r-ptval').textContent = fmt(bonusPtsValue);
+    document.getElementById('cc-r-net').textContent = fmt(net);
+    document.getElementById('cc-r-net').className = 'metric-value ' + (net >= 0 ? 'green' : 'red');
+
+    const neededPerWeek = minSpend > 0 ? minSpend / (period / 7) : 0;
+    document.getElementById('cc-r-breakeven').innerHTML = minSpend > 0
+      ? `📅 Min. spend: <span>${fmt(minSpend)}</span> over <span>${period} days</span> — that's <span>${fmt(Math.round(neededPerWeek))}/week</span> on the card.`
+      : `📅 No minimum spend requirement entered.`;
+
+    // Verdict
+    const verdict = document.getElementById('cc-verdict');
+    const vicon = document.getElementById('cc-vicon');
+    const vbody = document.getElementById('cc-vbody');
+    const vhead = document.getElementById('cc-vhead');
+    const vtext = document.getElementById('cc-vtext');
+
+    verdict.classList.remove('bad');
+    vbody.className = 'verdict-body';
+
+    if (net >= 500) {
+      vicon.textContent = '🔥';
+      vbody.classList.add('good');
+      vhead.textContent = 'Excellent deal — strongly worth it';
+      vtext.innerHTML = `The bonus alone is worth <strong>${fmt(bonusPtsValue)}</strong> at 1c/pt against a <strong>${fmt(totalCost)}</strong> annual fee — a <strong>${fmt(net)} net gain</strong>. If you redeem on premium cabin flights, real value could be 2–5× higher.`;
+    } else if (net >= 0) {
+      vicon.textContent = '✅';
+      vbody.classList.add('good');
+      vhead.textContent = 'Worth it — positive return on the bonus';
+      vtext.innerHTML = `You net <strong>${fmt(net)}</strong> from the bonus offer at the 1c/pt baseline. Solid deal — consider whether the card suits longer-term use too.`;
+    } else {
+      vicon.textContent = '⚠️';
+      verdict.classList.add('bad');
+      vbody.classList.add('bad');
+      vhead.textContent = 'Bonus alone doesn\'t cover the fee';
+      vtext.innerHTML = `At 1c/pt, the bonus is worth <strong>${fmt(bonusPtsValue)}</strong> but the annual fee is <strong>${fmt(totalCost)}</strong> — a <strong>${fmt(Math.abs(net))} shortfall</strong> on the bonus alone. Could still be worthwhile if you redeem for premium flights (2c–5c/pt).`;
+    }
+
+    // ── Ongoing earn rate section ──
+    const earnSection = document.getElementById('cc-earn-section');
+    if (earnRate > 0 && annualSpend > 0) {
+      const ptsFromEarning = annualSpend * earnRate;
+      const earnVal = ptsFromEarning * 0.01;
+      const totalPts = bonus + ptsFromEarning;
+      // Cost per point on the bonus, with earn pts considered a sweetener
+      const cppBonus = bonus > 0 ? (totalCost / bonus * 100).toFixed(2) : '—';
+
+      document.getElementById('cc-r-earnpts').textContent = fmtPts(Math.round(ptsFromEarning));
+      document.getElementById('cc-r-earnval').textContent = fmt(Math.round(earnVal));
+      document.getElementById('cc-r-totalpts').textContent = fmtPts(Math.round(totalPts));
+      document.getElementById('cc-r-cpp').textContent = bonus > 0 ? cppBonus + 'c/pt' : '—';
+
+      document.getElementById('cc-earn-vtext').innerHTML =
+        `Based on your <strong>${fmt(annualSpend)}/yr</strong> spend at <strong>${earnRate}pts/$1</strong>, you'd earn an additional <strong>${fmtPts(Math.round(ptsFromEarning))}</strong> per year (worth <strong>${fmt(Math.round(earnVal))}</strong>) — bringing your combined total to <strong>${fmtPts(Math.round(totalPts))}</strong>. Your effective cost on the sign-up bonus is <strong>${cppBonus}c/pt</strong> before factoring in ongoing earn.`;
+
+      earnSection.style.display = 'block';
+    } else {
+      earnSection.style.display = 'none';
+    }
+
+    document.getElementById('cc-results').classList.add('show');
+  }
+
+  /* ── Health Insurance Toggle ── */
+  function toggleHI() {
+    const cb = document.getElementById('hi-hascurrent');
+    cb.checked = !cb.checked;
+    document.getElementById('hi-current-wrap').style.display = cb.checked ? 'block' : 'none';
+    hiCalc();
+  }
+
+  /* ── Health Insurance Calc ── */
+  function hiCalc() {
+    const premium = v('hi-premium');
+    const bonus = v('hi-bonus');
+    const period = parseInt(document.getElementById('hi-period').value);
+    const freeWeeks = v('hi-freeweeks');
+    const hasCurrent = document.getElementById('hi-hascurrent').checked;
+    const currentPremium = hasCurrent ? v('hi-current') : 0;
+
+    if (premium === 0 && bonus === 0) return;
+
+    const totalWeeks = period / 7;
+    const billableWeeks = Math.max(0, totalWeeks - freeWeeks);
+    const totalPremiumPaid = premium * billableWeeks;
+    const freeSaving = premium * freeWeeks;
+    const currentPaid = currentPremium * billableWeeks;
+    const effectiveCost = Math.max(0, totalPremiumPaid - currentPaid);
+    const weeklyExtra = Math.max(0, premium - currentPremium);
+    const ptsValue = bonus * 0.01;
+    const net = ptsValue - effectiveCost;
+
+    document.getElementById('hi-r-total').textContent = fmt(Math.round(totalPremiumPaid));
+    document.getElementById('hi-r-cost').textContent = fmt(Math.round(effectiveCost));
+    document.getElementById('hi-r-pts').textContent = fmtPts(bonus);
+    document.getElementById('hi-r-ptval').textContent = fmt(ptsValue);
+    document.getElementById('hi-r-weekly').textContent = hasCurrent
+      ? fmt(Math.round(weeklyExtra)) + '/wk extra'
+      : fmt(Math.round(premium)) + '/wk';
+    document.getElementById('hi-r-net').textContent = fmt(Math.round(net));
+    document.getElementById('hi-r-net').className = 'metric-value ' + (net >= 0 ? 'green' : 'red');
+
+    // Free weeks saving callout
+    const freeBlock = document.getElementById('hi-r-freeweeks-block');
+    if (freeWeeks > 0) {
+      document.getElementById('hi-r-freesaved').textContent = fmt(Math.round(freeSaving));
+      freeBlock.style.display = 'block';
+    } else {
+      freeBlock.style.display = 'none';
+    }
+
+    const freeWeeksNote = freeWeeks > 0
+      ? ` (${freeWeeks} free weeks deducted — saving ${fmt(Math.round(freeSaving))})`
+      : '';
+
+    document.getElementById('hi-r-breakeven').innerHTML = hasCurrent
+      ? `📅 Holding for <span>${period} days</span> (${totalWeeks.toFixed(1)} wks, <strong>${billableWeeks.toFixed(1)} billed</strong>${freeWeeksNote}). You pay <span>${fmt(Math.round(weeklyExtra))}/wk more</span> than your current policy — total extra outlay <span>${fmt(Math.round(effectiveCost))}</span>.`
+      : `📅 Holding for <span>${period} days</span> (${totalWeeks.toFixed(1)} wks, <strong>${billableWeeks.toFixed(1)} billed</strong>${freeWeeksNote}). Total premium paid: <span>${fmt(Math.round(totalPremiumPaid))}</span>.`;
+
+    const verdict = document.getElementById('hi-verdict');
+    const vicon = document.getElementById('hi-vicon');
+    const vbody = document.getElementById('hi-vbody');
+    const vhead = document.getElementById('hi-vhead');
+    const vtext = document.getElementById('hi-vtext');
+
+    verdict.classList.remove('bad');
+    vbody.className = 'verdict-body';
+
+    const costLabel = hasCurrent ? 'extra cost' : 'total premium';
+
+    if (net >= 300) {
+      vicon.textContent = '🔥';
+      vbody.classList.add('good');
+      vhead.textContent = 'Strong deal — points outweigh the cost';
+      vtext.innerHTML = `Your effective ${costLabel} is <strong>${fmt(Math.round(effectiveCost))}</strong> to earn <strong>${fmtPts(bonus)}</strong> worth a minimum <strong>${fmt(ptsValue)}</strong>. Net saving: <strong>${fmt(Math.round(net))}</strong>. Premium cabin redemptions could make this even more valuable.`;
+    } else if (net >= 0) {
+      vicon.textContent = '✅';
+      vbody.classList.add('good');
+      vhead.textContent = 'Marginally worth it';
+      vtext.innerHTML = `You net <strong>${fmt(Math.round(net))}</strong> at baseline 1c/pt. It's a slim positive return — weigh up whether the policy suits your actual health needs beyond the points offer.`;
+    } else {
+      vicon.textContent = '⚠️';
+      verdict.classList.add('bad');
+      vbody.classList.add('bad');
+      vhead.textContent = 'Points don\'t cover the cost';
+      vtext.innerHTML = `You spend <strong>${fmt(Math.round(effectiveCost))}</strong> in ${costLabel} to earn points worth only <strong>${fmt(ptsValue)}</strong> at baseline — a <strong>${fmt(Math.abs(Math.round(net)))} shortfall</strong>. Only worthwhile if the policy itself provides value beyond points, or you redeem for premium flights.`;
+    }
+
+    document.getElementById('hi-results').classList.add('show');
+  }
+</script>
+</body>
+</html>
